@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="190" height="111">
+<rect width="100%" height="100%" fill="white"/>
+<g font-family="DejaVu Sans Mono, monospace" font-size="12" fill="black">
+  <text x="5" y="12">.</text>
+  <text x="5" y="26">├── build</text>
+  <text x="5" y="40">│   └── bin</text>
+  <text x="5" y="55">│       ├── ls</text>
+  <text x="5" y="69">│       └── w.txt</text>
+  <text x="5" y="84">├── 1.txt</text>
+  <text x="5" y="98">└── ls.cpp</text>
+</g>
+</svg>
