@@ -1,0 +1,4 @@
+[[plugin]]
+path = "build/jsonl_storage_plugin.so"
+[plugin.config]
+file = "plugin_out.jsonl"
