@@ -36,13 +36,6 @@ file(GLOB ALL_SRC src/*.cpp)
 set(LIB_SOURCES ${ALL_SRC})
 list(REMOVE_ITEM LIB_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp)
 
-add_executable(simple_crawler src/main.cpp ${LIB_SOURCES})
-target_include_directories(simple_crawler PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(simple_crawler PRIVATE Threads::Threads OpenSSL::SSL OpenSSL::Crypto)
-target_include_directories(simple_crawler PRIVATE ${LIBXML2_INCLUDE_DIR})
-target_link_libraries(simple_crawler PRIVATE ${LIBXML2_LIBRARIES})
-target_link_libraries(simple_crawler PRIVATE tomlplusplus::tomlplusplus)
-
 # Example target (uses library sources, but different main)
 add_executable(example_fetch examples/example.cpp ${LIB_SOURCES})
 target_include_directories(example_fetch PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
