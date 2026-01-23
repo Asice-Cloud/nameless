@@ -1,13 +1,13 @@
 #include "Scheduler.hpp"
-#include "Fetcher.hpp"
-#include "Parser.hpp"
-#include "Storage.hpp"
-#include "Robots.hpp"
+#include <iostream>
 #include <mutex>
 #include <unordered_set>
 #include <boost/asio/post.hpp>
-#include <iostream>
 #include <libxml/uri.h>
+#include "Fetcher.hpp"
+#include "Parser.hpp"
+#include "Robots.hpp"
+#include "Storage.hpp"
 
 Scheduler::Scheduler(boost::asio::io_context& ioc, Fetcher& fetcher, Parser& parser, Storage& storage)
 : ioc_(ioc), fetcher_(fetcher), parser_(parser), storage_(storage)
@@ -22,7 +22,7 @@ void Scheduler::add_url(const std::string& url)
     static std::unordered_set<std::string> seen;
     {
         std::lock_guard<std::mutex> g(mtx);
-        if (seen.find(url) != seen.end()) return;
+        if (seen.contains(url)) return;
         seen.insert(url);
     }
 
@@ -44,9 +44,7 @@ void Scheduler::add_url(const std::string& url)
             // - allow only http/https schemes
             // - respect rel=nofollow
             // - optional same-host filtering (default: same-host only)
-            const bool only_same_host = true;
             int scheduled = 0;
-            const int max_per_page = 50;
             // compute base host
             xmlURIPtr base_uri = xmlParseURI(url.c_str());
             std::string base_host;
@@ -54,26 +52,24 @@ void Scheduler::add_url(const std::string& url)
             if (base_uri) xmlFreeURI(base_uri);
             // iterate links but consult robots.txt before scheduling each
             for (const auto& L : pr.links) {
+                constexpr int max_per_page = 50;
                 if (scheduled >= max_per_page) break;
                 if (L.href.empty()) continue;
                 if (L.nofollow) continue; // respect nofollow
                 // strip fragment
                 std::string href = L.href;
-                auto posf = href.find('#');
-                if (posf != std::string::npos) href = href.substr(0, posf);
+                if (auto pos_f = href.find('#'); pos_f != std::string::npos) href = href.substr(0, pos_f);
                 // parse URI
                 xmlURIPtr uri = xmlParseURI(href.c_str());
                 if (!uri) continue;
                 bool ok_scheme = false;
                 if (uri->scheme) {
-                    std::string scheme = reinterpret_cast<const char*>(uri->scheme);
-                    if (scheme == "http" || scheme == "https") ok_scheme = true;
+                    if (std::string scheme = reinterpret_cast<const char*>(uri->scheme); scheme == "http" || scheme == "https") ok_scheme = true;
                 }
                 if (!ok_scheme) { xmlFreeURI(uri); continue; }
                 // same-host filter
-                if (only_same_host && uri->server) {
-                    std::string host = reinterpret_cast<const char*>(uri->server);
-                    if (!base_host.empty() && host != base_host) { xmlFreeURI(uri); continue; }
+                if (constexpr bool only_same_host = true; only_same_host && uri->server) {
+                    if (std::string host = reinterpret_cast<const char*>(uri->server); !base_host.empty() && host != base_host) { xmlFreeURI(uri); continue; }
                 }
                 xmlFreeURI(uri);
 
@@ -83,7 +79,7 @@ void Scheduler::add_url(const std::string& url)
                     ++scheduled;
                 } else {
                     // ensure_rules_for will call back with allowed flag
-                    robots_->ensure_rules_for(href, [this, href, &scheduled, max_per_page](bool allowed){
+                    robots_->ensure_rules_for(href, [this, href, &scheduled, max_per_page](const bool allowed){
                         if (!allowed) return;
                         if (scheduled >= max_per_page) return;
                         this->add_url(href);

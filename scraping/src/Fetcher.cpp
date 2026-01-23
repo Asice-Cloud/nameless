@@ -1,12 +1,12 @@
 #include "Fetcher.hpp"
+#include <iostream>
+#include <boost/asio/connect.hpp>
+#include <boost/asio/ssl.hpp>
+#include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/version.hpp>
-#include <boost/asio/connect.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/ssl.hpp>
-#include <iostream>
-#include <chrono>
+// #include <chrono>
 #include <ctime>
 #include <iomanip>
 #include <sstream>
@@ -24,16 +24,14 @@ static void parse_url(const std::string& url, std::string& host, std::string& po
     const std::string https_prefix = "https://";
     if (u.rfind(http_prefix, 0) == 0) u = u.substr(http_prefix.size());
     else if (u.rfind(https_prefix, 0) == 0) u = u.substr(https_prefix.size());
-    auto pos = u.find('/');
-    if (pos == std::string::npos) {
+    if (const auto pos = u.find('/'); pos == std::string::npos) {
         host = u;
     } else {
         host = u.substr(0, pos);
         target = u.substr(pos);
     }
     // allow explicit port in host (host:port)
-    auto colon = host.find(':');
-    if (colon != std::string::npos) {
+    if (const auto colon = host.find(':'); colon != std::string::npos) {
         port = host.substr(colon + 1);
         host = host.substr(0, colon);
     }
@@ -43,8 +41,7 @@ void Fetcher::async_fetch(net::io_context& ioc, const std::string& url, Callback
 {
     // determine scheme
     bool is_https = false;
-    std::string u = url;
-    if (u.rfind("https://", 0) == 0) is_https = true;
+    if (const std::string u = url; u.rfind("https://", 0) == 0) is_https = true;
 
     if (!is_https) {
         struct Session : std::enable_shared_from_this<Session> {
@@ -69,7 +66,7 @@ void Fetcher::async_fetch(net::io_context& ioc, const std::string& url, Callback
                 req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
                 auto self = shared_from_this();
-                resolver.async_resolve(host, port, [self](beast::error_code ec, tcp::resolver::results_type results){
+                resolver.async_resolve(host, port, [self](const beast::error_code& ec, const tcp::resolver::results_type& results){
                     if (ec) {
                         std::cerr << "Resolver error: " << ec.message() << std::endl;
                         FetchResult fr; fr.body = ""; fr.status = 0;
@@ -77,25 +74,25 @@ void Fetcher::async_fetch(net::io_context& ioc, const std::string& url, Callback
                         self->cb(fr);
                         return;
                     }
-                    self->stream.async_connect(results, [self](beast::error_code ec, const tcp::endpoint&){
-                        if (ec) {
-                            std::cerr << "Connect error: " << ec.message() << std::endl;
+                    self->stream.async_connect(results, [self](const beast::error_code& error_code, const tcp::endpoint&){
+                        if (error_code) {
+                            std::cerr << "Connect error: " << error_code.message() << std::endl;
                             FetchResult fr; fr.body = ""; fr.status = 0; fr.fetch_time = std::to_string(std::time(nullptr));
                             self->cb(fr);
                             return;
                         }
-                        http::async_write(self->stream, self->req, [self](beast::error_code ec, std::size_t){
-                            if (ec) {
-                                std::cerr << "Write error: " << ec.message() << std::endl;
+                        http::async_write(self->stream, self->req, [self](const beast::error_code& error_code_two, std::size_t){
+                            if (error_code_two) {
+                                std::cerr << "Write error: " << error_code_two.message() << std::endl;
                                 FetchResult fr; fr.body = ""; fr.status = 0; fr.fetch_time = std::to_string(std::time(nullptr));
                                 self->cb(fr);
                                 return;
                             }
-                            http::async_read(self->stream, self->buffer, self->res, [self](beast::error_code ec, std::size_t){
+                            http::async_read(self->stream, self->buffer, self->res, [self](beast::error_code error_code_three, std::size_t){
                                 beast::error_code shut_ec;
                                 self->stream.socket().shutdown(tcp::socket::shutdown_both, shut_ec);
-                                if (ec) {
-                                    std::cerr << "Read error: " << ec.message() << std::endl;
+                                if (error_code_three) {
+                                    std::cerr << "Read error: " << error_code_three.message() << std::endl;
                                     FetchResult fr; fr.body = ""; fr.status = 0; fr.fetch_time = std::to_string(std::time(nullptr));
                                     self->cb(fr);
                                     return;
@@ -120,7 +117,7 @@ void Fetcher::async_fetch(net::io_context& ioc, const std::string& url, Callback
             }
         };
 
-        auto s = std::make_shared<Session>(ioc, url, std::move(cb));
+        const auto s = std::make_shared<Session>(ioc, url, std::move(cb));
         s->start();
         return;
     }
@@ -154,7 +151,7 @@ void Fetcher::async_fetch(net::io_context& ioc, const std::string& url, Callback
             req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
             auto self = shared_from_this();
-            resolver.async_resolve(host, port, [self](beast::error_code ec, tcp::resolver::results_type results){
+            resolver.async_resolve(host, port, [self](const beast::error_code& ec, const tcp::resolver::results_type& results){
                 if (ec) {
                     std::cerr << "SSL resolver error: " << ec.message() << std::endl;
                     FetchResult fr; fr.body = ""; fr.status = 0; fr.fetch_time = std::to_string(std::time(nullptr));
@@ -169,7 +166,7 @@ void Fetcher::async_fetch(net::io_context& ioc, const std::string& url, Callback
                 if (!SSL_set_tlsext_host_name(self->stream.native_handle(), self->host.c_str())) {
                     std::cerr << "Failed to set SNI for host: " << self->host << std::endl;
                 }
-                self->stream.async_handshake(boost::asio::ssl::stream_base::client, [self](beast::error_code ec){
+                self->stream.async_handshake(boost::asio::ssl::stream_base::client, [self](const beast::error_code& ec){
                         if (ec) { std::cerr << "SSL handshake error: " << ec.message() << std::endl; FetchResult fr; fr.body = ""; fr.status = 0; fr.fetch_time = std::to_string(std::time(nullptr)); self->cb(fr); return; }
                     http::async_write(self->stream, self->req, [self](beast::error_code ec, std::size_t){
                             if (ec) { std::cerr << "SSL write error: " << ec.message() << std::endl; FetchResult fr; fr.body = ""; fr.status = 0; fr.fetch_time = std::to_string(std::time(nullptr)); self->cb(fr); return; }
@@ -197,7 +194,7 @@ void Fetcher::async_fetch(net::io_context& ioc, const std::string& url, Callback
         }
     };
 
-    auto s = std::make_shared<SSLSession>(ioc, url, std::move(cb));
+    const auto s = std::make_shared<SSLSession>(ioc, url, std::move(cb));
     s->start();
 }
 

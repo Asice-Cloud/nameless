@@ -1,7 +1,8 @@
 #include "Storage.hpp"
 #include <fstream>
-#include <mutex>
 #include <iostream>
+#include <mutex>
+#include <utility>
 
 static std::mutex storage_mutex;
 
@@ -10,10 +11,10 @@ Storage::Storage(const std::string& path) : path_(path) {}
 void Storage::set_plugin(std::shared_ptr<StoragePlugin> plugin)
 {
     std::lock_guard<std::mutex> g(storage_mutex);
-    plugin_ = plugin;
+    plugin_ = std::move(plugin);
 }
 
-void Storage::store(const std::string& url, const FetchResult& fr, const std::string& title, const std::string& excerpt)
+void Storage::store(const std::string& url, const FetchResult& fr, const std::string& title, const std::string& excerpt) const
 {
     std::lock_guard<std::mutex> g(storage_mutex);
     std::ofstream ofs(path_, std::ios::app);
@@ -23,19 +24,19 @@ void Storage::store(const std::string& url, const FetchResult& fr, const std::st
     // build JSON record into string
     std::ostringstream oss;
     oss << "{";
-    oss << "\"url\":\"" << url << "\",";
+    oss << R"("url":")" << url << "\",";
     oss << "\"status\":" << fr.status << ",";
-    oss << "\"content_type\":\"" << fr.content_type << "\",";
+    oss << R"("content_type":")" << fr.content_type << "\",";
     oss << "\"content_length\":" << fr.body.size() << ",";
-    oss << "\"fetch_time\":\"" << fr.fetch_time << "\",";
-    oss << "\"title\":\"";
+    oss << R"("fetch_time":")" << fr.fetch_time << "\",";
+    oss << R"("title":")";
     for (char c : title) {
         if (c == '"') oss << "\\\"";
         else if (c == '\\') oss << "\\\\";
         else oss << c;
     }
     oss << "\",";
-    oss << "\"excerpt\":\"";
+    oss << R"("excerpt":")";
     for (char c : excerpt) {
         if (c == '"') oss << "\\\"";
         else if (c == '\\') oss << "\\\\";
@@ -45,11 +46,11 @@ void Storage::store(const std::string& url, const FetchResult& fr, const std::st
     // headers as object
     oss << "\"headers\":{";
     bool first = true;
-    for (auto const& kv : fr.headers) {
+    for (const auto& [fst, snd] : fr.headers) {
         if (!first) oss << ",";
         first = false;
-        oss << "\"" << kv.first << "\":\"";
-        for (char c : kv.second) {
+        oss << "\"" << fst << "\":\"";
+        for (char c : snd) {
             if (c == '"') oss << "\\\"";
             else if (c == '\\') oss << "\\\\";
             else oss << c;
@@ -60,7 +61,7 @@ void Storage::store(const std::string& url, const FetchResult& fr, const std::st
     // store truncated body (limit to 8192)
     size_t limit = 8192;
     std::string body = fr.body.size() > limit ? fr.body.substr(0, limit) : fr.body;
-    oss << "\"body\":\"";
+    oss << R"("body":")";
     for (char c : body) {
         if (c == '"') oss << "\\\"";
         else if (c == '\\') oss << "\\\\";

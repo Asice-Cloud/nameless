@@ -23,6 +23,6 @@ struct ParseResult {
 
 class Parser {
 public:
-    ParseResult parse(const std::string& url, const std::string& content_type, const std::string& body) const;
-    std::string extract_title(const std::string& html) const;
+    [[nodiscard]] static ParseResult parse(const std::string& url, const std::string& content_type, const std::string& body);
+    [[nodiscard]] std::string extract_title(const std::string& html) const;
 };

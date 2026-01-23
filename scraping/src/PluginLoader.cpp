@@ -1,10 +1,10 @@
 #include "PluginLoader.hpp"
 #include <dlfcn.h>
-#include <stdexcept>
-#include <iostream>
-#include <fstream>
+// #include <stdexcept>
+// #include <fstream>
 #include <toml++/toml.h>
 #include <filesystem>
+#include <iostream>
 
 struct PluginLoader::Impl {
     struct Entry { void* handle = nullptr; std::string path; };
@@ -159,4 +159,16 @@ std::vector<std::shared_ptr<IPlugin>> PluginLoader::load_from_config(const std::
         }
     }
     return out;
+}
+
+std::vector<std::shared_ptr<IPlugin>>& PluginLoader::closure(){
+    std::vector<std::shared_ptr<IPlugin>>& plugins= *(new std::vector<std::shared_ptr<IPlugin>>());
+        if (std::filesystem::exists("../plugins.toml")) {
+            plugins = this->load_from_config("../plugins.toml");
+            std::cout << "Loaded " << plugins.size() << " plugins from ../plugins.toml\n";
+        } else if (std::filesystem::exists("plugins.toml")) {
+            plugins = this->load_from_config("plugins.toml");
+            std::cout << "Loaded " << plugins.size() << " plugins from plugins.toml\n";
+        }
+        return plugins;
 }

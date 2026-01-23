@@ -1,12 +1,13 @@
 #pragma once
-#include <string>
 #include <functional>
 #include <mutex>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
 class Fetcher;
-namespace boost { namespace asio { class io_context; } }
+namespace boost::asio
+{ class io_context; }
 
 class Robots {
 public:

@@ -16,5 +16,5 @@ class Fetcher {
 public:
     // callback receives a structured FetchResult; empty body => error
     using Callback = std::function<void(const FetchResult&)>;
-    void async_fetch(boost::asio::io_context& ioc, const std::string& url, Callback cb);
+    static void async_fetch(boost::asio::io_context& ioc, const std::string& url, Callback cb);
 };

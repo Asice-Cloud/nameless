@@ -1,29 +1,21 @@
-#include <boost/asio.hpp>
+#include <iostream>
 #include <thread>
 #include <vector>
-#include <iostream>
+#include <boost/asio.hpp>
 
 #include "Fetcher.hpp"
 #include "Parser.hpp"
-#include "Storage.hpp"
-#include "Scheduler.hpp"
 #include "PluginLoader.hpp"
-#include <filesystem>
+#include "Scheduler.hpp"
+#include "Storage.hpp"
 
 int main()
 {
     boost::asio::io_context ioc;
 
     // load plugins from plugins.toml if present
-    PluginLoader pl;
-    std::vector<std::shared_ptr<IPlugin>> plugins;
-    if (std::filesystem::exists("../plugins.toml")) {
-        plugins = pl.load_from_config("../plugins.toml");
-        std::cout << "Loaded " << plugins.size() << " plugins from ../plugins.toml\n";
-    } else if (std::filesystem::exists("plugins.toml")) {
-        plugins = pl.load_from_config("plugins.toml");
-        std::cout << "Loaded " << plugins.size() << " plugins from plugins.toml\n";
-    }
+    PluginLoader& pl = PluginLoader::init();
+    const std::vector<std::shared_ptr<IPlugin>> plugins = pl.closure();
 
     Fetcher fetcher;
     Parser parser;
@@ -31,8 +23,7 @@ int main()
 
     // if any StoragePlugin was loaded, attach the first one
     for (auto &p : plugins) {
-        auto sp = std::dynamic_pointer_cast<StoragePlugin>(p);
-        if (sp) {
+        if (const auto sp = std::dynamic_pointer_cast<StoragePlugin>(p)) {
             storage.set_plugin(sp);
             std::cout << "Attached StoragePlugin: " << sp->name() << "\n";
             break;
@@ -41,13 +32,12 @@ int main()
 
     Scheduler scheduler(ioc, fetcher, parser, storage);
 
-    std::vector<std::string> start_urls = {"https://example.com/"};
+    for (const std::vector<std::string> start_urls = {"https://example.com/"}; const auto& u : start_urls) scheduler.add_url(u);
 
-    for (const auto& u : start_urls) scheduler.add_url(u);
-
-    int concurrency = std::max(1u, std::thread::hardware_concurrency());
+    const int concurrency = std::max(1u, std::thread::hardware_concurrency());
     std::vector<std::thread> workers;
-    for (int i = 0; i < concurrency; ++i) {
+    workers.reserve(concurrency);
+for (int i = 0; i < concurrency; ++i) {
         workers.emplace_back([&ioc]{ ioc.run(); });
     }
 

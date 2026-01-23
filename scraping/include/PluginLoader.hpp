@@ -19,6 +19,12 @@ public:
     // list of loaded plugin paths
     std::vector<std::string> loaded_paths() const;
 
+    static PluginLoader& init() {
+        static PluginLoader loader;
+        return loader;
+    }
+
+   std::vector<std::shared_ptr<IPlugin>>& closure();
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;
