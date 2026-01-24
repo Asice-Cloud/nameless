@@ -17,7 +17,7 @@
 #define Nothing_TODO_With_Member  [](const std::string &name, const std::any &value, std::string_view type){}
 #define Nothing_TODO_With_Function  [](const std::string&, std::string_view, size_t, const std::vector<std::string>&) {}
 
-// 成员变量信息结构体
+// member info structure
 template <typename T>
 struct member_info
 {
@@ -27,7 +27,7 @@ struct member_info
     member_info(const char *n, T *p) : name(n), ptr(p) {}
 };
 
-// 成员函数信息结构体
+// member function info structure
 template <typename FuncPtr>
 struct function_info
 {
@@ -37,11 +37,11 @@ struct function_info
     function_info(const char *n, FuncPtr p) : name(n), ptr(p) {}
 };
 
-// 辅助宏用于创建成员信息
+// Macros for member and function info
 #define MEMBER(member) member_info(#member, &member)
 #define FUNCTION(func) function_info(#func, &std::remove_reference_t<decltype(*this)>::func)
 
-// 函数名解析器
+// Paser for function names to extract type information
 class function_name_parser
 {
 public:
@@ -85,7 +85,7 @@ public:
     }
 };
 
-// 属性基类
+// Base property class
 class property_base
 {
 public:
@@ -96,7 +96,7 @@ public:
     virtual size_t get_type_hash() const = 0;
 };
 
-// 函数基类
+// Base function class
 class function_base
 {
 public:
@@ -108,7 +108,7 @@ public:
     virtual std::vector<std::string> get_param_types() const = 0;
 };
 
-// 具体属性实现
+// Concrete property implementation
 template <typename T>
 class property : public property_base
 {
@@ -134,7 +134,7 @@ public:
 
     void set_value(const std::any &value) override
     {
-        *ptr_ = std::any_cast<T>(value); // 让异常传播到上层
+        *ptr_ = std::any_cast<T>(value); // let expect spread to caller
     }
 
     std::string_view get_type_name() const override
@@ -148,7 +148,7 @@ public:
     }
 };
 
-// 成员函数实现 - 可变参数版本
+// member function with variadic templates
 template <typename Class, typename ReturnType, typename... Args>
 class member_function : public function_base
 {
@@ -157,7 +157,7 @@ private:
     std::string signature_;
     ReturnType (Class::*func_ptr_)(Args...);
 
-    // 辅助函数：将参数包转换为类型名称
+    // convert to function signature string
     std::string build_signature() const
     {
         std::string sig = name_ + "(";
@@ -176,7 +176,7 @@ private:
         return sig;
     }
 
-    // 辅助函数：从 std::any 提取参数，支持引用和 const 引用
+    // extract args from std::any
     template<typename T>
     static T extract_arg(const std::any& a) {
         using base_t = std::remove_reference_t<T>;
@@ -191,7 +191,7 @@ private:
         }
     }
 
-    // 辅助函数：从 std::any 参数中提取参数并调用函数
+    // invoke implementation
     template <std::size_t... I>
     std::any invoke_impl(Class *obj, const std::vector<std::any> &args, std::index_sequence<I...>)
     {
@@ -265,7 +265,6 @@ private:
         return sig;
     }
 
-    // 辅助函数：从 std::any 提取参数，支持引用和 const 引用
     template<typename T>
     static T extract_arg(const std::any& a) {
         using base_t = std::remove_reference_t<T>;
@@ -319,14 +318,14 @@ public:
     }
 };
 
-// 反射对象基类
+// Base reflected object class
 class reflected_object
 {
 private:
     std::unordered_map<std::string, std::unique_ptr<property_base>> properties_;
     std::unordered_map<std::string, std::unique_ptr<function_base>> functions_;
 
-    // 递归辅助函数用于变参模板
+    // recursive variadic template to set properties
     template <typename T, typename... Rest>
     void set_properties_impl(const std::string &name, T &&value, Rest &&...rest)
     {
@@ -344,7 +343,7 @@ protected:
         properties_[name] = std::make_unique<property<T>>(ptr);
     }
 
-    // 注册成员函数 - 可变参数版本
+    // register member function
     template <typename Class, typename ReturnType, typename... Args>
     void register_function(const std::string &name, ReturnType (Class::*func_ptr)(Args...))
     {
@@ -357,31 +356,29 @@ protected:
         functions_[name] = std::make_unique<const_member_function<Class, ReturnType, Args...>>(name, func_ptr);
     }
 
-    // 批量注册成员变量
+    // register all
     template <typename... Members>
     void register_all_members(Members... members)
     {
-        // 使用fold expression (C++17)
+        // fold expression (C++17)
         (register_member_helper(members), ...);
     }
 
-    // 批量注册成员函数
+    // register all functions
     template <typename... Functions>
     void register_all_functions(Functions... functions)
     {
-        // 使用fold expression (C++17)
         (register_function_helper(functions), ...);
     }
 
 private:
-    // 成员变量注册辅助函数
+    // member registration helper
     template <typename T>
     void register_member_helper(T &&member_info)
     {
         register_member(member_info.name, member_info.ptr);
     }
 
-    // 成员函数注册辅助函数
     template <typename T>
     void register_function_helper(T &&func_info)
     {
@@ -389,7 +386,6 @@ private:
     }
 
 public:
-    // 获取属性值
     std::optional<std::any> get_property(const std::string &name) const
     {
         auto it = properties_.find(name);
@@ -400,7 +396,6 @@ public:
         return std::nullopt;
     }
 
-    // 设置属性值
     bool set_property(const std::string &name, const std::any &value)
     {
         auto it = properties_.find(name);
@@ -413,7 +408,6 @@ public:
             }
             catch (const std::bad_any_cast &)
             {
-                // 类型转换失败
                 std::cout << "Type conversion failed: bad any_cast" << std::endl;
                 return false;
             }
@@ -421,7 +415,7 @@ public:
         return false;
     }
 
-    // 获���所有属性名
+    // Get all names
     std::vector<std::string> get_property_names() const
     {
         std::vector<std::string> names;
@@ -432,7 +426,7 @@ public:
         return names;
     }
 
-    // 获取属性类型信息
+    // Get type info
     std::string_view get_property_type(const std::string &name) const
     {
         auto it = properties_.find(name);
@@ -443,7 +437,7 @@ public:
         return "unknown";
     }
 
-    // 访问所有成员 - 使用函数对象访问每个属性
+    // visit member
     template <typename Visitor>
     void visit_members(Visitor &&visitor) const
     {
@@ -453,22 +447,20 @@ public:
         }
     }
 
-    // 访问所有成员（属性和函数） - 使用函数对象访问每个成员
+    // visit all
     template <typename PropertyVisitor, typename FunctionVisitor>
     void visit_all_members(PropertyVisitor &&prop_visitor, FunctionVisitor &&func_visitor) const
     {
-        // 访问属性
         for (const auto &[name, property] : properties_)
         {
             prop_visitor(name, property->get_value(), property->get_type_name());
         }
 
-        // 访问函数
         for (const auto &[name, function] : functions_)
         {
             func_visitor(name, function->get_signature(), function->get_param_count(), function->get_param_types());
         }
-    } // 批量设置属性 - 使用变参模板（名称-值对）
+    } 
     template <typename... Args>
     void set_properties_variadic(Args &&...args)
     {
@@ -476,7 +468,6 @@ public:
         set_properties_impl(std::forward<Args>(args)...);
     }
 
-    // 批量设置属性 - 使用 map
     void set_properties(const std::unordered_map<std::string, std::any> &props)
     {
         for (const auto &[name, value] : props)
@@ -485,7 +476,6 @@ public:
         }
     }
 
-    // 批量设置属性 - 使用 vector of pairs
     void set_properties(const std::vector<std::pair<std::string, std::any>> &props)
     {
         for (const auto &[name, value] : props)
@@ -494,7 +484,6 @@ public:
         }
     }
 
-    // 获取所有属性的键值对
     std::unordered_map<std::string, std::any> get_all_properties() const
     {
         std::unordered_map<std::string, std::any> result;
@@ -505,19 +494,16 @@ public:
         return result;
     }
 
-    // 获取属性数量
     size_t property_count() const
     {
         return properties_.size();
     }
 
-    // 检查是否存在某个属性
     bool has_property(const std::string &name) const
     {
         return properties_.find(name) != properties_.end();
     }
 
-    // 调用成员函数
     std::any call_function(const std::string &name, const std::vector<std::any> &args = {})
     {
         auto it = functions_.find(name);
@@ -536,7 +522,6 @@ public:
         throw std::runtime_error("Function '" + name + "' not found");
     }
 
-    // 获取所有函数名
     std::vector<std::string> get_function_names() const
     {
         std::vector<std::string> names;
@@ -547,7 +532,6 @@ public:
         return names;
     }
 
-    // 获取函数签名
     std::string_view get_function_signature(const std::string &name) const
     {
         auto it = functions_.find(name);
@@ -558,13 +542,11 @@ public:
         return "unknown";
     }
 
-    // 检查是否存在某个函数
     bool has_function(const std::string &name) const
     {
         return functions_.find(name) != functions_.end();
     }
 
-    // 获取函数参数数量
     size_t get_function_param_count(const std::string &name) const
     {
         auto it = functions_.find(name);
@@ -575,7 +557,6 @@ public:
         return 0;
     }
 
-    // 获取函数参数类型
     std::vector<std::string> get_function_param_types(const std::string &name) const
     {
         auto it = functions_.find(name);
@@ -586,12 +567,11 @@ public:
         return {};
     }
 
-    // 打印所有反射信息
+    // print reflection info
     void print_reflection_info() const
     {
         std::cout << "=== Reflection Info ===\n";
 
-        // 打印属性信息
         std::cout << "Properties:\n";
         for (const auto &prop_name : get_property_names())
         {
@@ -635,7 +615,7 @@ public:
             std::cout << "\n";
         }
 
-        // 打印函数信息
+        // print functions
         auto function_names = get_function_names();
         if (!function_names.empty())
         {
@@ -648,14 +628,14 @@ public:
     }
 };
 
-// 类型名获取模板
+// Get type name
 template <typename T>
 std::string get_type_name(const std::source_location &loc = std::source_location::current())
 {
     return function_name_parser::extract_type_name(loc);
 }
 
-// 源码位置打印函数
+// print source location
 inline void print_source_location(const std::source_location &loc = std::source_location::current())
 {
     std::cout << "=== Source Location ===\n";
@@ -665,11 +645,11 @@ inline void print_source_location(const std::source_location &loc = std::source_
     std::cout << "Column: " << loc.column() << "\n";
 }
 
-// 反射宏
+// Macros
 #define REGISTER_MEMBER(member) register_member(#member, &member)
 #define REGISTER_FUNCTION(func) register_function(#func, &std::remove_reference_t<decltype(*this)>::func)
 
-// 简化的批量注册宏
+// Register multiple members/functions
 #define REGISTER_MEMBERS(...)              \
     do                                     \
     {                                      \
@@ -682,73 +662,3 @@ inline void print_source_location(const std::source_location &loc = std::source_
         register_all_functions(__VA_ARGS__); \
     } while (0)
 
-// 节点类 - 演示反射功能
-class node : public reflected_object
-{
-public:
-    int value;
-    std::string name;
-    double ratio;
-    bool active;
-
-    node(int v = 0) : value(v), name("default"), ratio(1.0), active(true)
-    {
-        // 注册属性
-        REGISTER_MEMBER(value);
-        REGISTER_MEMBER(name);
-        REGISTER_MEMBER(ratio);
-        REGISTER_MEMBER(active);
-
-        // 注册函数 - 展示可变参数支持
-        REGISTER_FUNCTION(process);      // 0 参数
-        REGISTER_FUNCTION(get_info);     // 0 参数
-        REGISTER_FUNCTION(set_value);    // 1 参数
-        REGISTER_FUNCTION(calculate);    // 2 参数
-        REGISTER_FUNCTION(complex_calc); // 5 参数
-    }
-
-    void print_source_location(const std::source_location &loc = std::source_location::current())
-    {
-        ::print_source_location(loc);
-    }
-
-    void process()
-    {
-        std::cout << "Processing node: " << name << " with value: " << value << std::endl;
-    }
-
-    std::string get_info()
-    {
-        return "Node '" + name + "' has value " + std::to_string(value) +
-               ", ratio " + std::to_string(ratio) +
-               ", active: " + (active ? "true" : "false");
-    }
-
-    void set_value(int new_value)
-    {
-        std::cout << "Setting value from " << value << " to " << new_value << std::endl;
-        value = new_value;
-    }
-
-    double calculate(double multiplier, double offset)
-    {
-        double result = value * multiplier * ratio + offset;
-        std::cout << "Calculation: " << value << " * " << multiplier << " * " << ratio
-                  << " + " << offset << " = " << result << std::endl;
-        return result;
-    }
-
-    // 演示5参数函数 - 展示可变参数模板的威力
-    std::string complex_calc(int base, double factor, const std::string &prefix, bool round_result, float precision)
-    {
-        double result = (value + base) * factor * ratio;
-        if (round_result)
-        {
-            result = std::round(result * precision) / precision;
-        }
-
-        std::string output = prefix + "_" + std::to_string(result);
-        std::cout << "Complex calculation with 5 parameters: " << output << std::endl;
-        return output;
-    }
-};

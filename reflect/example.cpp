@@ -30,7 +30,6 @@ int main() {
     auto result = p.call_function("inner_product", {3, 4});
     std::cout << "Inner product result: " << std::any_cast<int>(result) << std::endl;
 
-    // 测试 const Point& 参数的反射调用
     Point p2(7, 8);
     auto result2 = p.call_function("inner_with_other", {std::cref(p2)});
     std::cout << "Inner with other (ref) result: " << std::any_cast<int>(result2) << std::endl;
