@@ -40,8 +40,8 @@ private:
 
 public:
     HashMap() : buckets(INITIAL_CAPACITY), size(0), capacity(INITIAL_CAPACITY) {}
-    void put(const K& key, const V& value);
-    bool get(const K& key, V& value) const;
+    void put(const K& key, const V& value) noexcept;
+    bool get(const K& key, V& value) const noexcept;
     bool remove(const K& key);
     size_t getSize() const {
         rwLock.lockRead();
@@ -58,7 +58,7 @@ public:
 };
 
 template<typename K, typename V>
-void HashMap<K, V>::put(const K& key, const V& value) {
+void HashMap<K, V>::put(const K& key, const V& value) noexcept {
     rwLock.lockWrite();
     if (size >= capacity * LOAD_FACTOR) {
         resize();
@@ -77,7 +77,7 @@ void HashMap<K, V>::put(const K& key, const V& value) {
 }
 
 template<typename K, typename V>
-bool HashMap<K, V>::get(const K& key, V& value) const {
+bool HashMap<K, V>::get(const K& key, V& value) const noexcept{
     rwLock.lockRead();
     size_t h = hash(key);
     const Bucket<K, V>& bucket = buckets[h];
@@ -101,7 +101,7 @@ bool HashMap<K, V>::remove(const K& key) {
 
 template<typename K, typename V>
 void HashMap<K, V>::resize() {
-    size_t oldCapacity = capacity;
+    // size_t oldCapacity = capacity;
     capacity *= 2;
     std::vector<Bucket<K, V>> newBuckets(capacity);
 

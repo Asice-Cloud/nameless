@@ -24,11 +24,12 @@ public:
     const char* name() const override { return "jsonl_storage_plugin"; }
     const char* version() const override { return "0.1"; }
 
-    void store(const std::string& json_record) override {
+    std::expected<void,std::string>store(const std::string& json_record) override {
         std::lock_guard<std::mutex> g(mtx_);
-        if (!ofs_.is_open()) return;
+        if (!ofs_.is_open()) return std::unexpected("Output file is not open");
         ofs_ << json_record << "\n";
         ofs_.flush();
+        return {};
     }
 
 private:

@@ -3,6 +3,7 @@
 #include <iostream>
 #include <mutex>
 #include <utility>
+#include <print>
 
 static std::mutex storage_mutex;
 
@@ -14,12 +15,15 @@ void Storage::set_plugin(std::shared_ptr<StoragePlugin> plugin)
     plugin_ = std::move(plugin);
 }
 
-void Storage::store(const std::string& url, const FetchResult& fr, const std::string& title, const std::string& excerpt) const
+std::expected<void,std::string> Storage::store(const std::string& url, const FetchResult& fr, const std::string& title, const std::string& excerpt) const
 {
     std::lock_guard<std::mutex> g(storage_mutex);
     std::ofstream ofs(path_, std::ios::app);
-    if (!ofs) { std::cerr << "Storage: failed to open " << path_ << std::endl; return; }
-    std::cerr << "Storage: writing to " << path_ << " url=" << url << std::endl;
+    if (!ofs) { 
+        std::cerr << "Storage: failed to open " << path_ << " for writing" << std::endl;
+        return std::unexpected("Failed to open storage file");
+    }
+    std::print("Storage: writing to {} url = {}", path_, url);
 
     // build JSON record into string
     std::ostringstream oss;
@@ -74,6 +78,14 @@ void Storage::store(const std::string& url, const FetchResult& fr, const std::st
     ofs << record << std::endl;
 
     if (plugin_) {
-        try { plugin_->store(record); } catch(...) { /* ignore plugin errors */ }
+        // try { plugin_->store(record); } catch(...) { /* ignore plugin errors */ }
+        auto rev =plugin_->store(record);
+        if(rev.has_value()) {
+            std::print("Storage: plugin store succeeded\n");
+        } else {
+            std::print("Storage: plugin store failed: {}\n", rev.error());
+        }
     }
+
+    return {};
 }

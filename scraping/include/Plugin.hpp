@@ -3,6 +3,7 @@
 #include <string>
 // #include <memory>
 #include <functional>
+#include <expected>
 
 struct PluginConfig {
     std::map<std::string,std::string> kv;
@@ -24,7 +25,7 @@ public:
 class StoragePlugin : public IPlugin {
 public:
     // called to store a single JSON record (stringified)
-    virtual void store(const std::string& json_record) = 0;
+    virtual std::expected<void,std::string> store(const std::string& json_record) = 0;
 };
 
 class FetcherPlugin : public IPlugin {
