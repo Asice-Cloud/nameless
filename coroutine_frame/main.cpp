@@ -20,7 +20,6 @@ int main() {
     
     std::println("✓ Library works! See examples/ for more demos.");
 
-
     get_global_executor().shutdown();
     return 0;
 }
